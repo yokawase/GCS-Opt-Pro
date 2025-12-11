@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { calculateSimulation, getScreeningGuidance } from './services/logic';
 import LifeExpectancyCard from './components/LifeExpectancyCard';
 import SimulationChart from './components/SimulationChart';
@@ -11,15 +11,14 @@ const App = () => {
   const [sex, setSex] = useState<Sex>('Male');
   const [comorbidity, setComorbidity] = useState<ComorbidityLevel>('mild');
   const [isSmoker, setIsSmoker] = useState<boolean>(false);
-  const [result, setResult] = useState<SimulationResult | null>(null);
 
-  useEffect(() => {
-    const res = calculateSimulation(age, sex, comorbidity);
-    setResult(res);
+  // Calculate result synchronously as derived state.
+  // This ensures 'result' is never null on first render, preventing white flashes or layout shifts.
+  const result: SimulationResult = useMemo(() => {
+    return calculateSimulation(age, sex, comorbidity);
   }, [age, sex, comorbidity]);
 
-  const guidance: GuidanceMap | null = useMemo(() => {
-    if (!result) return null;
+  const guidance: GuidanceMap = useMemo(() => {
     const le = result.personalEx;
     return {
       gastric: getScreeningGuidance('gastric', age, sex, comorbidity, isSmoker, le),
@@ -132,35 +131,29 @@ const App = () => {
           <div className="lg:col-span-8 space-y-6">
             
             {/* 1. Life Expectancy Card */}
-            {result && (
-              <LifeExpectancyCard
-                age={age}
-                personalEx={result.personalEx}
-                referenceEx={result.referenceEx}
-                comorbidity={comorbidity}
-              />
-            )}
+            <LifeExpectancyCard
+              age={age}
+              personalEx={result.personalEx}
+              referenceEx={result.referenceEx}
+              comorbidity={comorbidity}
+            />
 
             {/* 2. Gastric Cancer Simulation */}
-            {result && guidance && (
-              <SimulationChart 
-                result={result} 
-                guidanceMessage={guidance.gastric.message} 
-              />
-            )}
+            <SimulationChart 
+              result={result} 
+              guidanceMessage={guidance.gastric.message} 
+            />
 
             {/* 3. Other Cancer Guidelines */}
-            {guidance && (
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 mb-4 px-1">他のがん検診の適応判定 (Guidelines)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <ScreeningCard title="大腸がん (Colorectal)" guidance={guidance.colorectal} />
-                  <ScreeningCard title="肺がん (Lung)" guidance={guidance.lung} />
-                  <ScreeningCard title="乳がん (Breast)" guidance={guidance.breast} />
-                  <ScreeningCard title="子宮頸がん (Cervical)" guidance={guidance.cervical} />
-                </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-4 px-1">他のがん検診の適応判定 (Guidelines)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ScreeningCard title="大腸がん (Colorectal)" guidance={guidance.colorectal} />
+                <ScreeningCard title="肺がん (Lung)" guidance={guidance.lung} />
+                <ScreeningCard title="乳がん (Breast)" guidance={guidance.breast} />
+                <ScreeningCard title="子宮頸がん (Cervical)" guidance={guidance.cervical} />
               </div>
-            )}
+            </div>
 
           </div>
         </div>
